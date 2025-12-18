@@ -1,10 +1,11 @@
 {
   "model": "gemini-2.5-flash-preview-tts",
-  "voice": "Erinome",
+  "voice": "Enceladus",
   "style": "Read aloud in a warm and friendly tone, authoritative yet engaging delivery, measured masculine voice with restrained emotionality, moderate pacing with strategic pauses for tension:",
   "keys_file": "D:/Program Files/Gemini TTS v1_1/1_2/api_keys.txt",
   "output_folder": "C:/Users/pland/OneDrive/Рабочий стол/Тестовая озвучка",
   "chunk_size": 2000,
   "max_parallel": 15,
-  "enable_sound": true
+  "enable_sound": true,
+  "output_dir": "C:/Users/pland/OneDrive/Рабочий стол/Новая папка/181225"
 }

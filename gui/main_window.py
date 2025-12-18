@@ -65,6 +65,9 @@ class GeminiTTSAppAsync:
         print("=" * 70)
         print("🚀 Gemini TTS v3.0 - Async Parallel Edition")
         print("=" * 70)
+
+        # Автосохранение при закрытии
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
     
     def _create_ui(self) -> None:
         """Создать пользовательский интерфейс."""
@@ -113,12 +116,16 @@ class GeminiTTSAppAsync:
                                   values=MODELS, state='readonly', width=30)
         model_combo.pack(side='left', padx=(0, 20))
         model_combo.bind('<<ComboboxSelected>>', self._on_model_change)
+        model_combo.bind('<<ComboboxSelected>>', lambda e: self._auto_save_settings(), add='+')
+
         
         tk.Label(row1, text="Голос:").pack(side='left', padx=(0, 5))
         self.voice_var = tk.StringVar(value=self.settings.data['voice'])
         voice_combo = ttk.Combobox(row1, textvariable=self.voice_var, 
                                   values=VOICES, state='readonly', width=15)
         voice_combo.pack(side='left', padx=(0, 20))
+        voice_combo.bind('<<ComboboxSelected>>', lambda e: self._auto_save_settings())  # ✅ ДОБАВИТЬ
+
         
         tk.Label(row1, text="Файл ключей:").pack(side='left', padx=(0, 5))
         self.keys_file_var = tk.StringVar(value=self.settings.data['keys_file'])
@@ -127,27 +134,43 @@ class GeminiTTSAppAsync:
         
         tk.Button(row1, text="📂", command=self._browse_keys_file).pack(side='left', padx=(0, 5))
         tk.Button(row1, text="🔄 Загрузить", command=self._load_api_keys).pack(side='left')
-        
+                
+
         # Вторая строка настроек
         row2 = tk.Frame(settings_frame)
         row2.pack(fill='x', padx=5, pady=5)
-        
+
         tk.Label(row2, text="Стиль:").pack(side='left', padx=(0, 5))
         self.style_var = tk.StringVar(value=self.settings.data.get('style', ''))
         style_combo = ttk.Combobox(row2, textvariable=self.style_var, 
-                                  values=[""] + [s[1] for s in STYLE_PRESETS], 
-                                  width=40)
+                                values=[""] + [s[1] for s in STYLE_PRESETS], 
+                                width=40)
         style_combo.pack(side='left', padx=(0, 20))
-        
+        style_combo.bind('<<ComboboxSelected>>', lambda e: self._auto_save_settings())  # ✅ ДОБАВИТЬ
+
+
         tk.Label(row2, text="Размер чанка:").pack(side='left', padx=(0, 5))
         self.chunk_size_var = tk.IntVar(value=self.settings.data['chunk_size'])
         tk.Spinbox(row2, from_=500, to=5000, increment=100, 
-                  textvariable=self.chunk_size_var, width=10).pack(side='left', padx=(0, 20))
-        
+                textvariable=self.chunk_size_var, width=10).pack(side='left', padx=(0, 20))
+
         tk.Label(row2, text="Параллельность:").pack(side='left', padx=(0, 5))
         self.parallel_var = tk.IntVar(value=self.settings.data['max_parallel'])
         tk.Spinbox(row2, from_=1, to=20, 
-                  textvariable=self.parallel_var, width=10).pack(side='left')
+                textvariable=self.parallel_var, width=10).pack(side='left')
+
+        # ✅ ДОБАВЬТЕ ТРЕТЬЮ СТРОКУ - Папка вывода
+        row3 = tk.Frame(settings_frame)
+        row3.pack(fill='x', padx=5, pady=5)
+
+        tk.Label(row3, text="Папка вывода:").pack(side='left', padx=(0, 5))
+        self.output_dir_var = tk.StringVar(value=self.settings.data.get('output_dir', 'output'))
+        output_entry = tk.Entry(row3, textvariable=self.output_dir_var, width=50)
+        output_entry.pack(side='left', padx=(0, 5))
+
+        tk.Button(row3, text="📂 Выбрать", command=self._browse_output_dir).pack(side='left', padx=(0, 5))
+        tk.Button(row3, text="🗂️ Открыть папку", command=self._open_output_dir).pack(side='left')
+
         
         # Статистика API ключей
         stats_frame = tk.LabelFrame(self.root, text="📊 Статистика API ключей", 
@@ -306,11 +329,32 @@ class GeminiTTSAppAsync:
             'style': self.style_var.get(),
             'keys_file': self.keys_file_var.get(),
             'chunk_size': self.chunk_size_var.get(),
-            'max_parallel': self.parallel_var.get()
+            'max_parallel': self.parallel_var.get(),
+            'output_dir': self.output_dir_var.get()
         })
         self.settings.save()
         messagebox.showinfo("Успех", "Настройки сохранены!")
-    
+
+        
+
+    def _auto_save_settings(self) -> None:
+        """Автоматическое сохранение настроек (тихое, без уведомлений)."""
+        try:
+            self.settings.data.update({
+                'model': self.model_var.get(),
+                'voice': self.voice_var.get(),
+                'style': self.style_var.get(),
+                'keys_file': self.keys_file_var.get(),
+                'chunk_size': self.chunk_size_var.get(),
+                'max_parallel': self.parallel_var.get(),
+                'output_dir': self.output_dir_var.get()
+            })
+            self.settings.save()
+            # Тихое сохранение - без вывода в консоль
+        except Exception as e:
+            print(f"⚠️ Ошибка автосохранения: {e}")
+
+
     def _browse_keys_file(self) -> None:
         """Выбрать файл с API ключами."""
         filename = filedialog.askopenfilename(
@@ -320,7 +364,43 @@ class GeminiTTSAppAsync:
         if filename:
             self.keys_file_var.set(filename)
             self._load_api_keys()
-    
+        
+
+    def _browse_output_dir(self) -> None:
+        """Выбрать папку для сохранения чанков."""
+        from tkinter import filedialog
+        dirname = filedialog.askdirectory(
+            title="Выберите папку для сохранения аудио чанков",
+            initialdir=self.output_dir_var.get()
+        )
+        if dirname:
+            self.output_dir_var.set(dirname)
+            os.makedirs(dirname, exist_ok=True)
+            self._auto_save_settings()  # ✅ ДОБАВИТЬ
+
+
+    def _open_output_dir(self) -> None:
+        """Открыть папку с чанками в проводнике."""
+        import subprocess
+        import platform
+        
+        output_dir = self.output_dir_var.get()
+        
+        # Создать папку если не существует
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Открыть в проводнике (кросс-платформенно)
+        try:
+            if platform.system() == 'Windows':
+                os.startfile(output_dir)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.Popen(['open', output_dir])
+            else:  # Linux
+                subprocess.Popen(['xdg-open', output_dir])
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось открыть папку:\n{e}")
+
+
     def _load_api_keys(self) -> None:
         """Загрузить API ключи из файла."""
         keys_file = self.keys_file_var.get()
@@ -375,7 +455,7 @@ class GeminiTTSAppAsync:
                 messagebox.showinfo("Успех", f"Загружено {len(text)} символов")
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Не удалось загрузить файл:\n{e}")
-    
+        
     def _split_text(self) -> None:
         """Разбить текст на чанки."""
         text = self.input_text.get('1.0', 'end-1c').strip()
@@ -383,9 +463,30 @@ class GeminiTTSAppAsync:
         if not text:
             messagebox.showwarning("Предупреждение", "Введите текст для разбивки")
             return
+        # Сохранить размер чанка и параллельность
+        self._auto_save_settings()
+        
+        chunk_size = self.chunk_size_var.get()
         
         chunk_size = self.chunk_size_var.get()
         self.chunks_text = TextChunker.split_by_paragraphs(text, max_chars=chunk_size)
+        
+        # ✅ НОВОЕ: Сохранить чанки в текстовые файлы
+        try:
+            output_dir = self.output_dir_var.get()
+            chunks_dir = os.path.join(output_dir, 'chunks_txt')
+            os.makedirs(chunks_dir, exist_ok=True)
+            
+            for i, chunk_text in enumerate(self.chunks_text, 1):
+                filename = f"{i:02d}.txt"  # 01.txt, 02.txt, ...
+                filepath = os.path.join(chunks_dir, filename)
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(chunk_text)
+            
+            print(f"✅ Сохранено {len(self.chunks_text)} чанков в: {chunks_dir}")
+        except Exception as e:
+            print(f"⚠️ Ошибка сохранения чанков: {e}")
+            # Продолжаем работу даже если сохранение не удалось
         
         # Очистить предыдущие виджеты
         for widget in self.chunk_widgets:
@@ -403,7 +504,8 @@ class GeminiTTSAppAsync:
             self.chunk_widgets.append(widget)
         
         messagebox.showinfo("Успех", f"Текст разбит на {len(self.chunks_text)} чанков")
-    
+
+
     def _on_chunk_text_change(self, chunk_num: int, new_text: str) -> None:
         """Обработчик изменения текста чанка."""
         if 0 < chunk_num <= len(self.chunks_text):
@@ -444,11 +546,15 @@ class GeminiTTSAppAsync:
         model = self.model_var.get()
         voice = self.voice_var.get()
         style = self.style_var.get()
-        output_folder = self.settings.data['output_folder']
-        
+        # ✅Папка для аудио
+        output_dir = self.output_dir_var.get()
+        audio_folder = os.path.join(output_dir, 'voice')
+        os.makedirs(audio_folder, exist_ok=True)
+                
         success, audio_file, error_msg = await self.tts_generator.generate_chunk(
-            chunk_text, chunk_num, self.api_keys, model, voice, style, output_folder
+            chunk_text, chunk_num, self.api_keys, model, voice, style, audio_folder  # ✅ ИЗМЕНЕНО
         )
+
         
         if success:
             widget.set_status("✅ Готово", "green")
@@ -473,6 +579,11 @@ class GeminiTTSAppAsync:
         if self.is_generating:
             messagebox.showwarning("Предупреждение", "Генерация уже выполняется")
             return
+        
+        # Сохранить настройки перед генерацией
+        self._auto_save_settings()
+        
+        self.is_generating = True
         
         self.is_generating = True
         self.generate_btn.config(state='disabled')
@@ -510,7 +621,10 @@ class GeminiTTSAppAsync:
         model = self.model_var.get()
         voice = self.voice_var.get()
         style = self.style_var.get()
-        output_folder = self.settings.data['output_folder']
+        # ✅ НОВОЕ: Папка для аудио
+        output_dir = self.output_dir_var.get()
+        audio_folder = os.path.join(output_dir, 'voice')
+        os.makedirs(audio_folder, exist_ok=True)
         max_parallel = self.parallel_var.get()
         
         # Семафор для ограничения параллельности
@@ -524,8 +638,9 @@ class GeminiTTSAppAsync:
                 
                 chunk_text = widget.get_text()
                 success, audio_file, error_msg = await self.tts_generator.generate_chunk(
-                    chunk_text, chunk_num, self.api_keys, model, voice, style, output_folder
+                    chunk_text, chunk_num, self.api_keys, model, voice, style, audio_folder  # ✅ ИЗМЕНЕНО
                 )
+
                 
                 if success:
                     duration = time.time() - tracker.start_time
@@ -582,18 +697,21 @@ class GeminiTTSAppAsync:
     
     def _merge_all_chunks(self) -> None:
         """Склеить все чанки в один файл."""
-        output_folder = self.settings.data['output_folder']
+        # ✅ НОВОЕ: Папка с аудио
+        output_dir = self.output_dir_var.get()
+        audio_folder = os.path.join(output_dir, 'voice')
         
-        if not os.path.exists(output_folder):
-            messagebox.showwarning("Предупреждение", "Папка с чанками не найдена")
+        if not os.path.exists(audio_folder):
+            messagebox.showwarning("Предупреждение", "Папка с аудио чанками не найдена")
             return
         
         # Собрать все файлы чанков
         chunk_files = []
         for i in range(1, len(self.chunk_widgets) + 1):
-            chunk_file = os.path.join(output_folder, f"{i:02d}.wav")
+            chunk_file = os.path.join(audio_folder, f"chunk_{i:02d}.wav")  # ✅ ИЗМЕНЕНО
             if os.path.exists(chunk_file):
                 chunk_files.append(chunk_file)
+
         
         if not chunk_files:
             messagebox.showwarning("Предупреждение", "Нет сгенерированных чанков для склейки")
@@ -707,3 +825,13 @@ FFmpeg: """ + ("✅ Установлен" if FFMPEG_AVAILABLE else "❌ Не н�
                 pygame.mixer.Sound.play(pygame.mixer.Sound(buffer=b'\x00\xff' * 1000))
             except:
                 pass
+        
+    def _on_closing(self) -> None:
+        """Обработчик закрытия окна - сохранить настройки и закрыть."""
+        print("\n" + "=" * 70)
+        print("📝 Сохранение настроек перед выходом...")
+        self._auto_save_settings()
+        print("👋 Программа закрыта")
+        print("=" * 70)
+        self.root.destroy()
+

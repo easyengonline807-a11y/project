@@ -20,7 +20,7 @@ class Settings:
             'voice': 'Puck',
             'style': '',
             'keys_file': 'api_keys.txt',
-            'output_folder': 'output',
+            'output_dir': 'output' ,
             'chunk_size': 3000,
             'max_parallel': 15,  # Автоматически для flash
             'enable_sound': True

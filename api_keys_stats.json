@@ -1,0 +1,44 @@
+{
+  "AIzaSyD-UTj0at2-cf7SysxUSUyvHVZiHPBxBTA": {
+    "requests_today": 0,
+    "reset_time": "2025-12-19T00:00:00",
+    "last_request": 0,
+    "exhausted": true,
+    "error_count": 2
+  },
+  "AIzaSyAP4NA1OEZrEW-mCNc6rIxtosDYzCr1ru4": {
+    "requests_today": 0,
+    "reset_time": "2025-12-19T00:00:00",
+    "last_request": 0,
+    "exhausted": true,
+    "error_count": 2
+  },
+  "AIzaSyCzMXhOuo5Oadn229tcoS3lFcsjOrr4ZEQ": {
+    "requests_today": 0,
+    "reset_time": "2025-12-19T00:00:00",
+    "last_request": 0,
+    "exhausted": true,
+    "error_count": 2
+  },
+  "AIzaSyBOjmRuqrfNiIoZd9z6Qelue157jJrwwSw": {
+    "requests_today": 2,
+    "reset_time": "2025-12-19T00:00:00",
+    "last_request": 1766054535.993467,
+    "exhausted": false,
+    "error_count": 0
+  },
+  "AIzaSyCKysrl3IEaLAAfpWXapqWp9LjBIzeNuho": {
+    "requests_today": 0,
+    "reset_time": "2025-12-19T00:00:00",
+    "last_request": 0,
+    "exhausted": false,
+    "error_count": 0
+  },
+  "AIzaSyB-uCtLCHOSqw-YyrWLGq8yYoWqvRuzei0": {
+    "requests_today": 0,
+    "reset_time": "2025-12-19T00:00:00",
+    "last_request": 0,
+    "exhausted": false,
+    "error_count": 0
+  }
+}
